@@ -1,0 +1,35 @@
+# Foundry build artifacts
+out/
+cache/
+broadcast/
+
+# Coverage outputs
+lcov.info
+coverage/
+coverage-*/
+*.lcov
+
+# Environment and secrets
+.env
+.env.*.local
+
+# Editors/IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Node (if present)
+node_modules/
+
+# Python caches (if present)
+__pycache__/
+
+# Note: .gas-snapshot is intentionally kept in git to compare gas across commits.
+# If you prefer to ignore it, uncomment the next line:
+# .gas-snapshot
+
+# Temporary deploy script containing secrets (DO NOT COMMIT)
+deploy.sh
