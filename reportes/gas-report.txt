@@ -1,81 +1,129 @@
 No files changed, compilation skipped
 
-Ran 4 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
-[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 2502372)
-[PASS] test_eth_con_oraculo_revert_no_configurado() (gas: 2287699)
-[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 2339371)
-[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 4916848)
-Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 29.30ms (21.79ms CPU time)
-
-Ran 23 tests for test/KipuBankV3.t.sol:KipuBankV3Test
-[PASS] test_bank_cap_precheck_y_credito() (gas: 2675999)
-[PASS] test_constructor_decimales_usdc_invalidos() (gas: 899454)
-[PASS] test_constructor_parametros_invalidos() (gas: 1931676)
-[PASS] test_constructor_slippage_excesivo() (gas: 290287)
-[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 288762)
-[PASS] test_depositar_eth_swapea_a_usdc() (gas: 242823)
-[PASS] test_depositar_parametros_invalidos_erc20() (gas: 78881)
-[PASS] test_depositar_parametros_invalidos_eth() (gas: 69528)
-[PASS] test_depositar_recibe_eth_via_receive() (gas: 241585)
-[PASS] test_depositar_revertir_sin_par_directo() (gas: 47221)
-[PASS] test_depositar_usdc_directo() (gas: 232400)
-[PASS] test_pausar_bloquea_ops_y_roles() (gas: 367165)
-[PASS] test_retirar_respeta_withdraw_cap() (gas: 419825)
-[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 108840)
-[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 141988)
-[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 53494)
-[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 135879)
-[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 57289)
-[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 279109)
-[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 200394)
-[PASS] test_slippage_eth_dentro_margen_ok() (gas: 244886)
-[PASS] test_slippage_eth_fuera_margen_revert() (gas: 97963)
-[PASS] test_token_aceptado() (gas: 27200)
-Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 29.34ms (26.82ms CPU time)
+Ran 1 test for test/KipuTimelock.t.sol:KipuTimelockTest
+[PASS] test_timelock_puede_actualizar_configs() (gas: 378907)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.49s (1.41ms CPU time)
 
 Ran 1 test for test/CheckAmmVsOracle.t.sol:CheckAmmVsOracle
-[PASS] test_amm_vs_oraculo_info() (gas: 50861)
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.38s (4.38s CPU time)
+[PASS] test_amm_vs_oraculo_info() (gas: 52181)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.31s (4.31s CPU time)
+
+Ran 5 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
+[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 49723)
+[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 2449252)
+[PASS] test_eth_oraculo_fallback_por_revert() (gas: 2579315)
+[PASS] test_eth_sin_oraculo_ok() (gas: 2533919)
+[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 49569)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 7.59s (4.51s CPU time)
+
+Ran 34 tests for test/KipuBankV3.t.sol:KipuBankV3Test
+[PASS] test_admin_setters_config() (gas: 298222)
+[PASS] test_bank_cap_precheck_y_credito() (gas: 2707195)
+[PASS] test_constructor_decimales_usdc_invalidos() (gas: 900796)
+[PASS] test_constructor_parametros_invalidos() (gas: 1939959)
+[PASS] test_constructor_slippage_excesivo() (gas: 291590)
+[PASS] test_depositar_erc20_cap_precheck_revert() (gas: 2422003)
+[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 294596)
+[PASS] test_depositar_erc20_revert_cap_en_cierre() (gas: 2468542)
+[PASS] test_depositar_erc20_revert_cap_en_cierre_sin_mocks() (gas: 2587824)
+[PASS] test_depositar_eth_cap_precheck_revert() (gas: 2378439)
+[PASS] test_depositar_eth_revert_cap_en_cierre() (gas: 2512430)
+[PASS] test_depositar_eth_revert_pair_inexistente() (gas: 65400)
+[PASS] test_depositar_eth_swapea_a_usdc() (gas: 247840)
+[PASS] test_depositar_parametros_invalidos_erc20() (gas: 79189)
+[PASS] test_depositar_parametros_invalidos_eth() (gas: 69836)
+[PASS] test_depositar_recibe_eth_via_receive() (gas: 246646)
+[PASS] test_depositar_revertir_sin_par_directo() (gas: 47639)
+[PASS] test_depositar_usdc_directo() (gas: 232114)
+[PASS] test_pausar_bloquea_ops_y_roles() (gas: 359387)
+[PASS] test_receive_eth_monto_cero_revert() (gas: 38900)
+[PASS] test_retirar_respeta_withdraw_cap() (gas: 419274)
+[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 109154)
+[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 134642)
+[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 53736)
+[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 128511)
+[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 57553)
+[PASS] test_slippage_erc20_custom_revert_por_minout() (gas: 201040)
+[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 284662)
+[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 204275)
+[PASS] test_slippage_eth_custom_revert_por_minout() (gas: 2389231)
+[PASS] test_slippage_eth_dentro_margen_ok() (gas: 249850)
+[PASS] test_slippage_eth_fuera_margen_revert() (gas: 102801)
+[PASS] test_token_aceptado() (gas: 27332)
+[PASS] test_vistas_capacidad_y_contadores() (gas: 286271)
+Suite result: ok. 34 passed; 0 failed; 0 skipped; finished in 7.59s (10.45s CPU time)
 
 ╭----------------------------------------+-----------------+--------+--------+--------+---------╮
 | src/KipuBankV3.sol:KipuBankV3 Contract |                 |        |        |        |         |
 +===============================================================================================+
 | Deployment Cost                        | Deployment Size |        |        |        |         |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| 2190838                                | 11292           |        |        |        |         |
+| 2240826                                | 11109           |        |        |        |         |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
 |                                        |                 |        |        |        |         |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
 | Function Name                          | Min             | Avg    | Median | Max    | # Calls |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| DEFAULT_ADMIN_ROLE                     | 615             | 615    | 615    | 615    | 2       |
+| DEFAULT_ADMIN_ROLE                     | 637             | 637    | 637    | 637    | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| PAUSER_ROLE                            | 879             | 879    | 879    | 879    | 8       |
+| PAUSER_ROLE                            | 923             | 923    | 923    | 923    | 8       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| contadoresDeUsuario                    | 2601            | 2601   | 2601   | 2601   | 1       |
+| bankCapUSD6Raw                         | 263             | 263    | 263    | 263    | 1       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| depositar                              | 24544           | 117521 | 114984 | 236665 | 19      |
+| capacidadDisponibleUSD                 | 2794            | 2794   | 2794   | 2794   | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| depositarEthConOraculo                 | 29146           | 143934 | 149047 | 248496 | 4       |
+| contadoresDeUsuario                    | 2589            | 2589   | 2589   | 2589   | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| grantRole                              | 26580           | 34713  | 26580  | 50980  | 3       |
+| depositar                              | 24588           | 119186 | 112397 | 255366 | 30      |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| hasRole                                | 2934            | 2934   | 2934   | 2934   | 6       |
+| ethUsdOracle                           | 2707            | 2707   | 2707   | 2707   | 1       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| pause                                  | 23837           | 37778  | 47072  | 47072  | 5       |
+| grantRole                              | 26602           | 34735  | 26602  | 51002  | 3       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| receive                                | 226885          | 226885 | 226885 | 226885 | 1       |
+| hasRole                                | 2956            | 2956   | 2956   | 2956   | 6       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| retirar                                | 24537           | 36448  | 30794  | 71163  | 6       |
+| oracleDevBps                           | 2611            | 2611   | 2611   | 2611   | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| saldoUSDCDe                            | 3158            | 3158   | 3158   | 3158   | 10      |
+| oracleMaxDelay                         | 2897            | 2897   | 2897   | 2897   | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| tokenAceptado                          | 407             | 3220   | 3228   | 6019   | 4       |
+| pause                                  | 23859           | 27540  | 29994  | 29994  | 5       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| totalValueUSD6Raw                      | 2875            | 2875   | 2875   | 2875   | 3       |
+| receive                                | 28353           | 129958 | 129958 | 231563 | 2       |
 |----------------------------------------+-----------------+--------+--------+--------+---------|
-| unpause                                | 23718           | 24636  | 24943  | 24943  | 4       |
+| retirar                                | 24575           | 39719  | 31968  | 71160  | 7       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| saldoUSDCDe                            | 3202            | 3202   | 3202   | 3202   | 9       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| setOracle                              | 24594           | 34701  | 34701  | 44809  | 2       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| setOracleDevBps                        | 24323           | 32124  | 24327  | 47723  | 3       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| setSlippageBps                         | 23685           | 25792  | 23715  | 29977  | 3       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| slippageBps                            | 2545            | 2545   | 2545   | 2545   | 2       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| tokenAceptado                          | 429             | 3237   | 3245   | 6030   | 4       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| totalValueUSD6Raw                      | 2919            | 2919   | 2919   | 2919   | 3       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| unpause                                | 23740           | 28258  | 29765  | 29765  | 4       |
 ╰----------------------------------------+-----------------+--------+--------+--------+---------╯
+
+╭--------------------------------------------+-----------------+-------+--------+-------+---------╮
+| src/KipuTimelock.sol:KipuTimelock Contract |                 |       |        |       |         |
++=================================================================================================+
+| Deployment Cost                            | Deployment Size |       |        |       |         |
+|--------------------------------------------+-----------------+-------+--------+-------+---------|
+| 1400493                                    | 6965            |       |        |       |         |
+|--------------------------------------------+-----------------+-------+--------+-------+---------|
+|                                            |                 |       |        |       |         |
+|--------------------------------------------+-----------------+-------+--------+-------+---------|
+| Function Name                              | Min             | Avg   | Median | Max   | # Calls |
+|--------------------------------------------+-----------------+-------+--------+-------+---------|
+| execute                                    | 49034           | 54277 | 49668  | 64131 | 3       |
+|--------------------------------------------+-----------------+-------+--------+-------+---------|
+| schedule                                   | 56032           | 56246 | 56032  | 56675 | 3       |
+╰--------------------------------------------+-----------------+-------+--------+-------+---------╯
 
 ╭---------------------------------------------+-----------------+-----+--------+-----+---------╮
 | test/mocks/MockERC20.sol:MockERC20 Contract |                 |     |        |     |         |
@@ -92,4 +140,4 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.38s (4.38s CPU ti
 ╰---------------------------------------------+-----------------+-----+--------+-----+---------╯
 
 
-Ran 3 test suites in 4.38s (4.44s CPU time): 28 tests passed, 0 failed, 0 skipped (28 total tests)
+Ran 4 test suites in 7.62s (22.98s CPU time): 41 tests passed, 0 failed, 0 skipped (41 total tests)

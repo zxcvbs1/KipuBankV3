@@ -11,7 +11,6 @@
 #   - MAINNET: MAINNET_RPC_URL, V2_ROUTER_MAINNET, WETH_MAINNET, USDC_MAINNET, ETH_ORACLE_MAINNET,
 #              (opcional) PAIR_TOKEN_MAINNET, NOT_PAIR_TOKEN_MAINNET, FORK_BLOCK_MAINNET, MAINNET_CHAIN_ID
 
-set -euo pipefail
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "[select-env] Por favor ejecuta con: source script/select-env.sh <testnet|mainnet>" >&2

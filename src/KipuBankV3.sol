@@ -15,11 +15,13 @@ import {IUniswapV2Factory} from "src/interfaces/IUniswapV2Factory.sol";
 // Chainlink
 import {AggregatorV3Interface} from "src/interfaces/AggregatorV3Interface.sol";
 
-/// @title KipuBankV3 - Depósitos de cualquier token swappeados a USDC vía Uniswap V2, con bank cap en USDC
+/// @title KipuBankV3
 /// @author Kipu
-/// @notice Acepta depósitos de ETH, USDC o cualquier ERC20 con par directo a USDC en Uniswap V2.
-///         Si el token no es USDC, se swappea automáticamente a USDC y se acredita en el saldo del usuario.
-///         Se respeta un tope global del banco (bank cap) expresado en USDC (6 decimales).
+/// @notice Contrato de contabilidad tipo banco que acepta depositos en ETH, USDC o cualquier ERC20 con par directo
+///         a USDC en Uniswap V2 y acredita saldo del usuario en USDC (6 decimales). Los tokens que no son USDC se
+///         swappean a USDC via el router V2 configurado. Un tope global del banco (USDC 6 decimales) limita el valor
+///         total acreditado. Opcionalmente se valida contra un oraculo Chainlink ETH/USD mediante oracleDevBps para
+///         comparar la cotizacion del AMM y rechazar desvios excesivos.
 contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -27,10 +29,10 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
                                  TIPOS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Cantidades contables expresadas en USDC (6 decimales).
+    /// @notice Alias interno para cantidades contables expresadas en USDC (6 decimales).
     type USD6 is uint256;
 
-    /// @notice Contadores de actividad por usuario (informativos).
+    /// @notice Contadores de actividad por usuario (solo informativo).
     struct UserCounters {
         uint64 deposits;
         uint64 withdrawals;
@@ -48,67 +50,106 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     string public constant NAME = "KipuBankV3";
     string public constant VERSION = "3.0.0";
 
-    /// @notice Direccion canonica para ETH.
+    /// @notice Direccion canonica usada para representar ETH nativo en la API.
     address public constant NATIVE_TOKEN = address(0);
 
-    /// @notice Decimales de USDC utilizados para la contabilidad (6).
+    /// @notice Decimales de USDC usados para la contabilidad (se esperan 6).
     uint8 public constant USD_DECIMALS = 6;
-    /// @notice Máximo slippage permitido en basis points (50%).
+    /// @notice Maximo slippage permitido en basis points para swaps en AMM (50%).
     uint256 public constant MAX_SLIPPAGE_BPS = 5_000;
 
 
-    /// @notice Router de Uniswap V2 (inmutable).
+    /// @notice Router Uniswap V2 usado para cotizar y swappear (inmutable).
     IUniswapV2Router02 public immutable router;
-    /// @notice Factory de Uniswap V2 (inmutable).
+    /// @notice Factory Uniswap V2 resuelta desde el router (inmutable).
     IUniswapV2Factory public immutable factory;
-    /// @notice WETH del router (inmutable).
+    /// @notice Direccion WETH retornada por el router (inmutable).
     address public immutable WETH;
-    /// @notice Direccion del token USDC usado como unidad contable.
+    /// @notice Token USDC usado como unidad contable (direccion inmutable, se esperan 6 decimales).
     address public immutable USDC;
-    /// @notice Oraculo Chainlink ETH/USD
-    AggregatorV3Interface public immutable ethUsdOracle;
-    /// @notice Maxima antiguedad permitida del precio del oraculo (segundos)
-    uint256 public immutable oracleMaxDelay;
-    /// @notice Tolerancia de desviacion contra oraculo en bps (0=deshabilitado)
-    uint256 public immutable oracleDevBps;
+    /// @notice Oraculo Chainlink ETH/USD usado para validar cotizaciones del AMM (configurable por admin).
+    AggregatorV3Interface public ethUsdOracle;
+    /// @notice Antiguedad maxima permitida del precio del oraculo en segundos (configurable por admin).
+    uint256 public oracleMaxDelay;
+    /// @notice Desviacion permitida contra el oraculo en basis points. 0 deshabilita el chequeo (configurable por admin).
+    uint256 public oracleDevBps;
+    /// @notice Decimales cacheados del oraculo Chainlink ETH/USD, se actualizan al cambiar el oraculo.
+    uint8 public ethOracleDecimals;
 
-    /// @notice Tope global del banco expresado en USD6 (USDC).
+    /// @notice Tope global del banco expresado en USDC 6 decimales.
     USD6 public immutable bankCapUSD6;
-    /// @notice Limite por retiro por transaccion en USD6.
+    /// @notice Limite por retiro por transaccion expresado en USDC 6 decimales.
     USD6 public immutable withdrawCapUSD6;
-    /// @notice Tolerancia de slippage en basis points (p.ej. 100 = 1%).
-    uint256 public immutable slippageBps;
+    /// @notice Tolerancia de slippage en basis points (ej 100 = 1%). Configurable por admin.
+    uint256 public slippageBps;
 
     /*//////////////////////////////////////////////////////////////
                                ALMACENAMIENTO
     //////////////////////////////////////////////////////////////*/
-    /// @notice Saldos de usuarios en USDC (6 decimales).
+    /// @notice Saldos de usuarios en USDC (6 decimales). Mapea usuario => saldo.
     mapping(address => uint256) private _balancesUSDC; // user => usdc amount (6 decs)
-    /// @notice Valor contable total del banco en USDC (6 decimales).
+    /// @notice Valor total contable del banco en USDC (6 decimales).
     USD6 public totalValueUSD6;
-    /// @notice Contadores por usuario (informativos).
+    /// @notice Mapeo de contadores por usuario.
     mapping(address => UserCounters) private _counters;
 
     /*//////////////////////////////////////////////////////////////
                                    ERRORES
     //////////////////////////////////////////////////////////////*/
+    /// @notice Lanzado cuando el monto es cero.
     error MontoCero();
+    /// @notice Lanzado cuando los parametros de deposito ETH son invalidos.
     error ParametrosEthInvalidos();
+    /// @notice Lanzado cuando los parametros de deposito ERC20 son invalidos.
     error ParametrosErc20Invalidos();
+    /// @notice Lanzado cuando el nuevo total propuesto excederia el tope del banco.
+    /// @param propuestoUSD6 total propuesto en USDC 6 decimales
+    /// @param capUSD6 tope del banco en USDC 6 decimales
     error ExcedeTopeBancoUSD(uint256 propuestoUSD6, uint256 capUSD6);
+    /// @notice Lanzado cuando un retiro excede el limite por retiro.
+    /// @param montoUSD6 retiro solicitado en USDC 6 decimales
+    /// @param capUSD6 limite por retiro en USDC 6 decimales
     error ExcedeTopeRetiroUSD(uint256 montoUSD6, uint256 capUSD6);
+    /// @notice Lanzado cuando el saldo del usuario es insuficiente para retirar.
+    /// @param saldo saldo actual del usuario
+    /// @param monto monto solicitado
     error SaldoInsuficiente(uint256 saldo, uint256 monto);
+    /// @notice Lanzado cuando el total del banco subfluiria.
+    /// @param total total actual
+    /// @param monto monto
     error TotalInsuficiente(uint256 total, uint256 monto);
+    /// @notice Lanzado cuando falla la transferencia nativa.
     error TransferenciaNativaFallida();
+    /// @notice Lanzado cuando una direccion es cero.
     error DireccionInvalida();
+    /// @notice Lanzado cuando no existe par directo V2 entre token y USDC.
+    /// @param token token de entrada
+    /// @param usdc direccion de USDC
     error PairInexistente(address token, address usdc);
+    /// @notice Lanzado cuando el out del swap esta por debajo del minimo esperado.
+    /// @param minOut minimo requerido
+    /// @param realOut out real recibido
     error SlippageInsuficiente(uint256 minOut, uint256 realOut);
+    /// @notice Lanzado cuando los decimales de USDC no son 6.
+    /// @param actual decimales reportados
     error UsdcDecimalesInvalido(uint8 actual);
-    error ParametrosNumericosInvalidos(); // Para caps en cero o comparacion invalida
-    error SlippageExcesivo(uint256 maxPermitido); // Para slippage > 50%
+    /// @notice Lanzado para parametros numericos invalidos (ej demoras en cero, orden de caps).
+    error ParametrosNumericosInvalidos();
+    /// @notice Lanzado cuando el slippage solicitado excede MAX_SLIPPAGE_BPS.
+    /// @param maxPermitido slippage maximo permitido en bps
+    error SlippageExcesivo(uint256 maxPermitido);
+    /// @notice Lanzado cuando el precio del oraculo esta stale.
+    /// @param updatedAt timestamp de ultima actualizacion
+    /// @param maxDelay antiguedad maxima permitida
     error OraculoStale(uint256 updatedAt, uint256 maxDelay);
+    /// @notice Lanzado cuando el oraculo retorna precio no positivo.
     error OraculoPrecioInvalido();
+    /// @notice Lanzado cuando el out esperado por AMM se desvia del oraculo por encima de la tolerancia.
+    /// @param esperadoAMM monto segun AMM
+    /// @param esperadoOraculo monto segun oraculo
+    /// @param bps desviacion permitida en basis points
     error DesviacionOraculoExcesiva(uint256 esperadoAMM, uint256 esperadoOraculo, uint256 bps);
+    /// @notice Reservado para uso futuro cuando se requiera oraculo pero no este configurado.
     error OraculoNoConfigurado();
 
 
@@ -116,24 +157,41 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                    EVENTOS
     //////////////////////////////////////////////////////////////*/
-    /// @dev Mantiene compatibilidad de eventos con V2 pero indicando el token contable (USDC).
+    /// @notice Emitido cuando se acredita valor al saldo de un usuario.
+    /// @param cuenta direccion del usuario acreditado
+    /// @param token token recibido (USDC contable)
+    /// @param montoRaw monto recibido en decimales del token
+    /// @param nuevoSaldoRaw nuevo saldo del usuario en USDC (6 decimales)
+    /// @param valorUSD6 valor acreditado en USDC 6 decimales
     event Depositado(address indexed cuenta, address indexed token, uint256 montoRaw, uint256 nuevoSaldoRaw, uint256 valorUSD6);
+    /// @notice Emitido cuando se debita valor del saldo de un usuario.
+    /// @param cuenta direccion del usuario debitado
+    /// @param token token enviado (USDC)
+    /// @param montoRaw monto retirado
+    /// @param nuevoSaldoRaw nuevo saldo del usuario
+    /// @param valorUSD6 valor debitado en USDC 6 decimales
     event Retirado(address indexed cuenta, address indexed token, uint256 montoRaw, uint256 nuevoSaldoRaw, uint256 valorUSD6);
+    /// @notice Emitido cuando se ejecuta un swap para convertir a USDC.
+    /// @param cuenta usuario que inicio el deposito
+    /// @param tokenIn token de entrada
+    /// @param montoIn monto de entrada
+    /// @param montoOutUSDC monto de USDC recibido
     event Swapeado(address indexed cuenta, address indexed tokenIn, uint256 montoIn, uint256 montoOutUSDC);
 
     /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    /// @param admin address con DEFAULT_ADMIN_ROLE.
-    /// @param pauser address con PAUSER_ROLE.
-    /// @param router_ direccion del router UniswapV2.
-    /// @param usdc direccion del token USDC (6 decimales).
-    /// @param bankCapUSD6_ tope global del banco en USDC (6 decimales).
-    /// @param withdrawCapUSD6_ tope por retiro en USDC (6 decimales).
-    /// @param slippageBps_ tolerancia de slippage en bps (0..10000).
-    /// @param ethOracle_ direccion del oraculo Chainlink ETH/USD.
-    /// @param oracleMaxDelay_ maxima antiguedad en segundos permitida del precio del oraculo.
-    /// @param oracleDevBps_ tolerancia contra oraculo en bps (0 = deshabilita chequeo).
+    /// @notice Inicializa el contrato.
+    /// @param admin direccion que recibe DEFAULT_ADMIN_ROLE
+    /// @param pauser direccion que recibe PAUSER_ROLE
+    /// @param router_ direccion del router Uniswap V2
+    /// @param usdc direccion del token USDC (debe reportar 6 decimales)
+    /// @param bankCapUSD6_ tope global del banco en USDC 6 decimales
+    /// @param withdrawCapUSD6_ limite por retiro en USDC 6 decimales
+    /// @param slippageBps_ tolerancia de slippage del AMM en bps (0..MAX_SLIPPAGE_BPS)
+    /// @param ethOracle_ direccion del agregador Chainlink ETH/USD
+    /// @param oracleMaxDelay_ antiguedad maxima permitida en segundos para el precio del oraculo
+    /// @param oracleDevBps_ tolerancia de desviacion en bps contra el oraculo (0 deshabilita)
     constructor(
     address admin,
     address pauser,
@@ -146,7 +204,7 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     uint256 oracleMaxDelay_,
     uint256 oracleDevBps_
 ) {
-    // ---- Checks de direcciones y parámetros numéricos ----
+    // ---- Checks de direcciones y parametros numericos ----
     if (admin == address(0) || pauser == address(0)) revert DireccionInvalida();
     if (router_ == address(0) || usdc == address(0) || ethOracle_ == address(0)) revert DireccionInvalida();
     if (bankCapUSD6_ == 0 || withdrawCapUSD6_ == 0 || withdrawCapUSD6_ > bankCapUSD6_) revert ParametrosNumericosInvalidos();
@@ -180,6 +238,7 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     ethUsdOracle = AggregatorV3Interface(ethOracle_);
     oracleMaxDelay = oracleMaxDelay_;
     oracleDevBps = oracleDevBps_;
+    ethOracleDecimals = ethUsdOracle.decimals();
 }
 
     /*//////////////////////////////////////////////////////////////
@@ -192,10 +251,11 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     function unpause() external onlyRole(PAUSER_ROLE) { _unpause(); }
 
     /*//////////////////////////////////////////////////////////////
-                              INTERFAZ PUBLICA
+                             INTERFAZ PUBLICA
     //////////////////////////////////////////////////////////////*/
-    /// @notice Deposita ETH, USDC o un ERC20 con par directo a USDC en Uniswap V2.
-    /// @dev Para ETH: amount debe ser 0 y msg.value > 0. Para ERC-20: msg.value == 0 y amount > 0.
+    /// @notice Deposita ETH, USDC o un ERC20 con par directo a USDC a traves de Uniswap V2.
+    /// @dev Para ETH: token debe ser NATIVE_TOKEN, amount debe ser 0 y msg.value > 0.
+    ///      Para ERC20 (incluido USDC): msg.value debe ser 0 y amount > 0.
     function depositar(address token, uint256 amount)
         external
         payable
@@ -204,27 +264,23 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         validDepositParams(token, amount)
     {
         if (token == NATIVE_TOKEN) {
-            // por defecto, version sin oraculo
-            _depositNativeSwapDirect(msg.sender, msg.value);
+
+            _depositNativeSwap(msg.sender, msg.value);
+
         } else if (token == USDC) {
+
             _depositUSDC(msg.sender, amount);
+
         } else {
+
             _depositErc20Swap(msg.sender, token, amount);
+
         }
-    }
+}
 
-    /// @notice Deposita ETH validando el precio del AMM contra el oraculo (chequeo siempre activo).
-    function depositarEthConOraculo()
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-    {
-        if (msg.value == 0) revert MontoCero();
-        _depositNativeSwapOracle(msg.sender, msg.value);
-    }
 
-    /// @notice Retira USDC del saldo del emisor respetando el tope por retiro.
+
+    /// @notice Retira USDC del saldo del emisor respetando el limite por retiro.
     function retirar(address token, uint256 amount)
         external
         whenNotPaused
@@ -239,12 +295,11 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         if (amount > USD6.unwrap(withdrawCapUSD6)) {
             revert ExcedeTopeRetiroUSD(amount, USD6.unwrap(withdrawCapUSD6));
         }
+        uint256 newTv = USD6.unwrap(totalValueUSD6) - amount;  // Fuera de unchecked para check de underflow
 
         unchecked {
             _balancesUSDC[msg.sender] = bal - amount;
-            uint256 tv = USD6.unwrap(totalValueUSD6);
-            if (amount > tv) revert TotalInsuficiente(tv, amount);
-            totalValueUSD6 = USD6.wrap(tv - amount);
+            totalValueUSD6 = USD6.wrap(newTv);
             _counters[msg.sender].withdrawals += 1;
         }
 
@@ -254,45 +309,103 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
+                             ADMIN / CONFIG
+    //////////////////////////////////////////////////////////////*/
+    /// @notice Emitido cuando se actualiza la tolerancia de slippage.
+    /// @param anterior slippage anterior en bps
+    /// @param nuevo slippage nuevo en bps
+    event SlippageActualizado(uint256 anterior, uint256 nuevo);
+    /// @notice Emitido cuando se actualiza la direccion del oraculo o el max delay.
+    /// @param anterior direccion anterior del oraculo
+    /// @param nuevo nueva direccion del oraculo
+    /// @param delayAnterior delay maximo anterior
+    /// @param delayNuevo delay maximo nuevo
+    /// @param decimales decimales reportados por el nuevo oraculo
+    event OracleActualizado(address anterior, address nuevo, uint256 delayAnterior, uint256 delayNuevo, uint8 decimales);
+    /// @notice Emitido cuando se actualiza la tolerancia de desviacion contra el oraculo.
+    /// @param anterior valor anterior en bps
+    /// @param nuevo valor nuevo en bps
+    event OracleDevBpsActualizado(uint256 anterior, uint256 nuevo);
+
+    /// @notice Actualiza la tolerancia de slippage en bps. Solo ADMIN.
+    /// @param newBps nuevo valor de slippage en bps (debe ser <= MAX_SLIPPAGE_BPS)
+    function setSlippageBps(uint256 newBps) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newBps > MAX_SLIPPAGE_BPS) revert SlippageExcesivo(MAX_SLIPPAGE_BPS);
+        uint256 old = slippageBps;
+        slippageBps = newBps;
+        emit SlippageActualizado(old, newBps);
+    }
+
+    /// @notice Actualiza el oraculo y el max delay. Solo ADMIN.
+    /// @param newOracle nueva direccion del agregador Chainlink
+    /// @param newMaxDelay nuevo maximo delay en segundos
+    function setOracle(address newOracle, uint256 newMaxDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newOracle == address(0)) revert DireccionInvalida();
+        if (newMaxDelay == 0) revert ParametrosNumericosInvalidos();
+        // validar que el oraculo implementa decimals()
+        uint8 dec;
+        try AggregatorV3Interface(newOracle).decimals() returns (uint8 d) {
+            dec = d;
+        } catch {
+            revert DireccionInvalida();
+        }
+        address old = address(ethUsdOracle);
+        uint256 oldDelay = oracleMaxDelay;
+        ethUsdOracle = AggregatorV3Interface(newOracle);
+        oracleMaxDelay = newMaxDelay;
+        ethOracleDecimals = dec;
+        emit OracleActualizado(old, newOracle, oldDelay, newMaxDelay, dec);
+    }
+
+    /// @notice Actualiza la tolerancia de desviacion contra el oraculo (bps). Solo ADMIN.
+    /// @param newBps nuevo valor en bps (0..10000)
+    function setOracleDevBps(uint256 newBps) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newBps > 10_000) revert ParametrosNumericosInvalidos();
+        uint256 old = oracleDevBps;
+        oracleDevBps = newBps;
+        emit OracleDevBpsActualizado(old, newBps);
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                    VISTAS
     //////////////////////////////////////////////////////////////*/
-    /// @notice Devuelve el saldo en USDC (6 dec) de una cuenta.
-    /// @param cuenta direccion del usuario a consultar.
-    /// @return saldoUSDC monto de USDC (6 dec) acreditado a la cuenta.
+    /// @notice Devuelve el saldo en USDC (6 decimales) de una cuenta.
+    /// @param cuenta direccion a consultar
+    /// @return saldoUSDC saldo del usuario en USDC (6 decimales)
     function saldoUSDCDe(address cuenta) external view returns (uint256 saldoUSDC) { return _balancesUSDC[cuenta]; }
 
-    /// @notice Devuelve el valor total del banco en USDC (6 dec).
-    /// @return totalUSD6 valor total en USDC (6 dec).
+    /// @notice Devuelve el valor total del banco en USDC (6 decimales).
+    /// @return totalUSD6 total en USDC (6 decimales)
     function totalValueUSD6Raw() external view returns (uint256 totalUSD6) { return USD6.unwrap(totalValueUSD6); }
 
-    /// @notice Devuelve el tope global del banco en USDC (6 dec).
-    /// @return capUSD6 tope global en USDC (6 dec).
+    /// @notice Devuelve el tope global del banco en USDC (6 decimales).
+    /// @return capUSD6 tope en USDC (6 decimales)
     function bankCapUSD6Raw() external view returns (uint256 capUSD6) { return USD6.unwrap(bankCapUSD6); }
 
-    /// @notice Devuelve el tope por retiro por transaccion en USDC (6 dec).
-    /// @return capUSD6 tope por retiro en USDC (6 dec).
+    /// @notice Devuelve el limite por retiro en USDC (6 decimales).
+    /// @return capUSD6 limite por retiro en USDC (6 decimales)
     function withdrawCapUSD6Raw() external view returns (uint256 capUSD6) { return USD6.unwrap(withdrawCapUSD6); }
 
-    /// @notice Devuelve la capacidad restante del banco antes de alcanzar el tope global.
-    /// @return espacioUSD6 cantidad disponible en USDC (6 dec) que aun puede depositarse.
+    /// @notice Devuelve la capacidad restante antes de alcanzar el tope del banco.
+    /// @return espacioUSD6 espacio disponible en USDC (6 decimales)
     function capacidadDisponibleUSD() external view returns (uint256 espacioUSD6) {
         uint256 cap = USD6.unwrap(bankCapUSD6);
         uint256 tv = USD6.unwrap(totalValueUSD6);
         return cap > tv ? cap - tv : 0;
     }
 
-    /// @notice Devuelve los contadores informativos del usuario.
-    /// @param cuenta direccion del usuario a consultar.
-    /// @return depositos cantidad de depositos efectuados por el usuario.
-    /// @return retiros cantidad de retiros efectuados por el usuario.
+    /// @notice Devuelve contadores informativos del usuario.
+    /// @param cuenta direccion a consultar
+    /// @return depositos cantidad de depositos realizados por el usuario
+    /// @return retiros cantidad de retiros realizados por el usuario
     function contadoresDeUsuario(address cuenta) external view returns (uint64 depositos, uint64 retiros) {
         UserCounters memory c = _counters[cuenta];
         return (c.deposits, c.withdrawals);
     }
 
-    /// @notice Indica si un token es aceptado para depositar (USDC, ETH nativo o par directo con USDC).
-    /// @param token direccion del token a consultar.
-    /// @return aceptado true si el token es aceptado, false en caso contrario.
+    /// @notice Indica si un token es aceptado para depositar (USDC, ETH nativo, o par directo con USDC).
+    /// @param token direccion del token a consultar
+    /// @return aceptado true si es aceptado, false en caso contrario
     function tokenAceptado(address token) public view returns (bool aceptado) {
         if (token == NATIVE_TOKEN || token == USDC) return true;
         return factory.getPair(token, USDC) != address(0);
@@ -301,16 +414,19 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                            RECEPCION DE ETH
     //////////////////////////////////////////////////////////////*/
-    /// @notice Recibe ETH directamente y lo deposita swappeando a USDC (ruta sin oraculo).
+    /// @notice Funcion receive para aceptar ETH nativo y depositar swappeando a USDC.
     receive() external payable whenNotPaused nonReentrant {
         if (msg.value == 0) revert MontoCero();
-        // por defecto, ruta sin oraculo
-        _depositNativeSwapDirect(msg.sender, msg.value);
-    }
+
+        _depositNativeSwap(msg.sender, msg.value);
+}
 
     /*//////////////////////////////////////////////////////////////
                            LOGICA DE DEPOSITO
     //////////////////////////////////////////////////////////////*/
+    /// @notice Rutina interna para depositar USDC directo.
+    /// @param from direccion fuente
+    /// @param amount monto USDC (6 decimales) a depositar
     function _depositUSDC(address from, uint256 amount) internal {
         if (amount == 0) revert MontoCero();
 
@@ -331,9 +447,13 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
             _counters[from].deposits += 1;
         }
 
-        emit Depositado(from, USDC, amount, _balancesUSDC[from], amount);
+        emit Depositado(from, USDC, received, _balancesUSDC[from], received);
     }
 
+    /// @notice Rutina interna para depositar un ERC20 con par directo a USDC, swappeando a USDC.
+    /// @param from direccion fuente
+    /// @param tokenIn direccion del token ERC20
+    /// @param amountIn monto de entrada
     function _depositErc20Swap(address from, address tokenIn, uint256 amountIn) internal {
         if (amountIn == 0) revert MontoCero();
         if (!tokenAceptado(tokenIn)) revert PairInexistente(tokenIn, USDC);
@@ -384,6 +504,9 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         emit Depositado(from, USDC, outUSDC, _balancesUSDC[from], outUSDC);
     }
 
+    /// @notice Rutina interna para depositar ETH nativo usando la ruta directa del AMM.
+    /// @param from direccion fuente
+    /// @param amountInWei monto de ETH en wei
     function _depositNativeSwapDirect(address from, uint256 amountInWei) internal {
         if (amountInWei == 0) revert MontoCero();
 
@@ -427,10 +550,12 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         emit Depositado(from, USDC, outUSDC, _balancesUSDC[from], outUSDC);
     }
 
+    /// @notice Rutina interna para depositar ETH nativo usando validacion con oraculo.
+    /// @param from direccion fuente
+    /// @param amountInWei monto de ETH en wei
     function _depositNativeSwapOracle(address from, uint256 amountInWei) internal {
         if (amountInWei == 0) revert MontoCero();
-        if (oracleDevBps == 0) revert OraculoNoConfigurado();
-
+        
         // path WETH -> USDC
         address[] memory path = new address[](2);
         path[0] = WETH;
@@ -445,10 +570,10 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         (/*roundId*/, int256 answer, /*startedAt*/, uint256 updatedAt, /*answeredInRound*/) = ethUsdOracle.latestRoundData();
         if (answer <= 0) revert OraculoPrecioInvalido();
         if (block.timestamp - updatedAt > oracleMaxDelay) revert OraculoStale(updatedAt, oracleMaxDelay);
-        uint256 oracleOut = (amountInWei * (uint256(answer) * (10 ** USD_DECIMALS) / (10 ** ethUsdOracle.decimals()))) / 1e18;
+        uint256 oracleOut = (amountInWei * (uint256(answer) * (10 ** USD_DECIMALS) / (10 ** ethOracleDecimals))) / 1e18;
         uint256 diff = expectedOut > oracleOut ? expectedOut - oracleOut : oracleOut - expectedOut;
         uint256 maxDiff = (oracleOut * oracleDevBps) / 10_000;
-        if (diff > maxDiff) revert DesviacionOraculoExcesiva(expectedOut, oracleOut, slippageBps);
+        if (diff > maxDiff) revert DesviacionOraculoExcesiva(expectedOut, oracleOut, oracleDevBps);
 
         uint256 proposed = USD6.unwrap(totalValueUSD6) + minOut;
         if (proposed > USD6.unwrap(bankCapUSD6)) {
@@ -479,6 +604,64 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         emit Depositado(from, USDC, outUSDC, _balancesUSDC[from], outUSDC);
     }
 
+    /// @notice Deposito nativo unificado que realiza chequeo con oraculo cuando esta habilitado y hace fallback a la ruta directa si es necesario.
+    function _depositNativeSwap(address from, uint256 amountInWei) internal {
+        if (amountInWei == 0) revert MontoCero();
+
+        // If oracle comparison is disabled, use direct route.
+        if (oracleDevBps == 0) {
+            _depositNativeSwapDirect(from, amountInWei);
+            return;
+        }
+
+        // Ensure WETH/USDC pair exists for any route
+        if (factory.getPair(WETH, USDC) == address(0)) revert PairInexistente(WETH, USDC);
+
+        // Try oracle; if it fails or is stale/invalid, fallback to direct swap
+        int256 answer;
+        uint256 updatedAt;
+        bool oracleOk;
+        try ethUsdOracle.latestRoundData() returns (
+            uint80 /*roundId*/,
+            int256 a,
+            uint256 /*startedAt*/,
+            uint256 u,
+            uint80 /*answeredInRound*/
+        ) {
+            answer = a;
+            updatedAt = u;
+            oracleOk = (a > 0) && (block.timestamp - u <= oracleMaxDelay);
+        } catch {
+            oracleOk = false;
+        }
+
+        if (!oracleOk) {
+            _depositNativeSwapDirect(from, amountInWei);
+            return;
+        }
+
+        // With oracle OK: validate deviation against AMM quote
+        address[] memory path = new address[](2);
+        path[0] = WETH;
+        path[1] = USDC;
+        uint256 expectedOut = router.getAmountsOut(amountInWei, path)[1];
+        // Convert oracle price to USDC units (6 decimals)
+        uint256 oracleOut = (amountInWei * (uint256(answer) * (10 ** USD_DECIMALS) / (10 ** ethOracleDecimals))) / 1e18;
+        uint256 diff = expectedOut > oracleOut ? expectedOut - oracleOut : oracleOut - expectedOut;
+        uint256 maxDiff = (oracleOut * oracleDevBps) / 10_000;
+
+        if (diff > maxDiff) {
+            revert DesviacionOraculoExcesiva(expectedOut, oracleOut, oracleDevBps);
+        }
+
+        // Deviation acceptable: perform direct swap (same accounting/events)
+        _depositNativeSwapDirect(from, amountInWei);
+    }
+
+    /// @notice Calcula el minimo aceptable del swap segun la tolerancia de slippage.
+    /// @param amountIn monto de entrada
+    /// @param path path del swap
+    /// @return minOut minimo aceptable de salida
     function _quoteMinOut(uint256 amountIn, address[] memory path) internal view returns (uint256 minOut) {
         uint256[] memory outs = router.getAmountsOut(amountIn, path);
         uint256 expected = outs[outs.length - 1];
@@ -491,6 +674,9 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                            MODIFICADORES
     //////////////////////////////////////////////////////////////*/
+    /// @notice Valida parametros de deposito para ETH vs ERC20.
+    /// @param token direccion del token (usar NATIVE_TOKEN para ETH)
+    /// @param amount parametro de monto (0 para depositos de ETH)
     modifier validDepositParams(address token, uint256 amount) {
         if (token == NATIVE_TOKEN) {
             // Para ETH: amount debe ser 0 y msg.value > 0
@@ -502,3 +688,4 @@ contract KipuBankV3 is AccessControl, Pausable, ReentrancyGuard {
         _;
     }
 }
+

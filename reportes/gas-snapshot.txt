@@ -1,40 +1,87 @@
-No files changed, compilation skipped
+Compiling 13 files with Solc 0.8.24
+Solc 0.8.24 finished in 46.60s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> test/CheckAmmVsOracle.t.sol:13:51:
+   |
+13 |         try vm.envUint("ORACLE_DEV_BPS") returns (uint256 bps) {
+   |                                                   ^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> test/CheckAmmVsOracle.t.sol:48:9:
+   |
+48 |         uint256 bps = oracleOut == 0 ? 0 : (diff * 10_000) / oracleOut;
+   |         ^^^^^^^^^^^
 
-Ran 4 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
-[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 2267120)
-[PASS] test_eth_con_oraculo_revert_no_configurado() (gas: 2047171)
-[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 2091331)
-[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 4415212)
-Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 31.64ms (31.80ms CPU time)
+Warning (2072): Unused local variable.
+   --> test/KipuBankV3.t.sol:543:9:
+    |
+543 |         uint256 minOut = (expectedOut * (10_000 - SLIPPAGE_BPS)) / 10_000; // ~158.4e6
+    |         ^^^^^^^^^^^^^^
 
-Ran 23 tests for test/KipuBankV3.t.sol:KipuBankV3Test
-[PASS] test_bank_cap_precheck_y_credito() (gas: 2275247)
-[PASS] test_constructor_decimales_usdc_invalidos() (gas: 580182)
-[PASS] test_constructor_parametros_invalidos() (gas: 429772)
-[PASS] test_constructor_slippage_excesivo() (gas: 75611)
-[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 268274)
-[PASS] test_depositar_eth_swapea_a_usdc() (gas: 238003)
-[PASS] test_depositar_parametros_invalidos_erc20() (gas: 35749)
-[PASS] test_depositar_parametros_invalidos_eth() (gas: 26876)
-[PASS] test_depositar_recibe_eth_via_receive() (gas: 237085)
-[PASS] test_depositar_revertir_sin_par_directo() (gas: 25805)
-[PASS] test_depositar_usdc_directo() (gas: 169848)
-[PASS] test_pausar_bloquea_ops_y_roles() (gas: 181141)
-[PASS] test_retirar_respeta_withdraw_cap() (gas: 245113)
-[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 44328)
-[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 52133)
-[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 27766)
-[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 37726)
-[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 31561)
-[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 260121)
-[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 140506)
-[PASS] test_slippage_eth_dentro_margen_ok() (gas: 237566)
-[PASS] test_slippage_eth_fuera_margen_revert() (gas: 69643)
-[PASS] test_token_aceptado() (gas: 24700)
-Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 31.72ms (26.71ms CPU time)
+Warning (2072): Unused local variable.
+   --> test/KipuBankV3.t.sol:813:9:
+    |
+813 |         bytes32 adminRole = bank.DEFAULT_ADMIN_ROLE();
+    |         ^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/KipuBankV3.t.sol:155:5:
+    |
+155 |     function test_token_aceptado() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for test/KipuTimelock.t.sol:KipuTimelockTest
+[PASS] test_timelock_puede_actualizar_configs() (gas: 177503)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.84s (980.74µs CPU time)
 
 Ran 1 test for test/CheckAmmVsOracle.t.sol:CheckAmmVsOracle
-[PASS] test_amm_vs_oraculo_info() (gas: 46361)
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.14s (4.14s CPU time)
+[PASS] test_amm_vs_oraculo_info() (gas: 47681)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.66s (3.65s CPU time)
 
-Ran 3 test suites in 4.15s (4.21s CPU time): 28 tests passed, 0 failed, 0 skipped (28 total tests)
+Ran 5 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
+[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 45223)
+[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 2157232)
+[PASS] test_eth_oraculo_fallback_por_revert() (gas: 2325595)
+[PASS] test_eth_sin_oraculo_ok() (gas: 2291223)
+[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 45069)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 6.63s (3.99s CPU time)
+
+Ran 34 tests for test/KipuBankV3.t.sol:KipuBankV3Test
+[PASS] test_admin_setters_config() (gas: 94294)
+[PASS] test_bank_cap_precheck_y_credito() (gas: 2299231)
+[PASS] test_constructor_decimales_usdc_invalidos() (gas: 580312)
+[PASS] test_constructor_parametros_invalidos() (gas: 429571)
+[PASS] test_constructor_slippage_excesivo() (gas: 75702)
+[PASS] test_depositar_erc20_cap_precheck_revert() (gas: 2138239)
+[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 274108)
+[PASS] test_depositar_erc20_revert_cap_en_cierre() (gas: 2170602)
+[PASS] test_depositar_erc20_revert_cap_en_cierre_sin_mocks() (gas: 2245160)
+[PASS] test_depositar_eth_cap_precheck_revert() (gas: 2116943)
+[PASS] test_depositar_eth_revert_cap_en_cierre() (gas: 2219234)
+[PASS] test_depositar_eth_revert_pair_inexistente() (gas: 41580)
+[PASS] test_depositar_eth_swapea_a_usdc() (gas: 243020)
+[PASS] test_depositar_parametros_invalidos_erc20() (gas: 36057)
+[PASS] test_depositar_parametros_invalidos_eth() (gas: 27184)
+[PASS] test_depositar_recibe_eth_via_receive() (gas: 242146)
+[PASS] test_depositar_revertir_sin_par_directo() (gas: 26007)
+[PASS] test_depositar_usdc_directo() (gas: 169562)
+[PASS] test_pausar_bloquea_ops_y_roles() (gas: 180863)
+[PASS] test_receive_eth_monto_cero_revert() (gas: 17900)
+[PASS] test_retirar_respeta_withdraw_cap() (gas: 244672)
+[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 44642)
+[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 50686)
+[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 28008)
+[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 32655)
+[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 31825)
+[PASS] test_slippage_erc20_custom_revert_por_minout() (gas: 143652)
+[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 265674)
+[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 144387)
+[PASS] test_slippage_eth_custom_revert_por_minout() (gas: 2129735)
+[PASS] test_slippage_eth_dentro_margen_ok() (gas: 242530)
+[PASS] test_slippage_eth_fuera_margen_revert() (gas: 74481)
+[PASS] test_token_aceptado() (gas: 24832)
+[PASS] test_vistas_capacidad_y_contadores() (gas: 143798)
+Suite result: ok. 34 passed; 0 failed; 0 skipped; finished in 6.63s (9.53s CPU time)
+
+Ran 4 test suites in 6.63s (19.76s CPU time): 41 tests passed, 0 failed, 0 skipped (41 total tests)

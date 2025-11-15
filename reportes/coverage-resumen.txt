@@ -1,81 +1,107 @@
-Compiling 46 files with Solc 0.8.24
-Solc 0.8.24 finished in 7.61s
+Compiling 58 files with Solc 0.8.24
+Solc 0.8.24 finished in 13.12s
 Compiler run successful with warnings:
 Warning (2519): This declaration shadows an existing declaration.
-  --> test/CheckAmmVsOracle.t.sol:11:51:
+  --> test/CheckAmmVsOracle.t.sol:13:51:
    |
-11 |         try vm.envUint("ORACLE_DEV_BPS") returns (uint256 bps) {
+13 |         try vm.envUint("ORACLE_DEV_BPS") returns (uint256 bps) {
    |                                                   ^^^^^^^^^^^
 Note: The shadowed declaration is here:
-  --> test/CheckAmmVsOracle.t.sol:41:9:
+  --> test/CheckAmmVsOracle.t.sol:48:9:
    |
-41 |         uint256 bps = oracleOut == 0 ? 0 : (diff * 10_000) / oracleOut;
+48 |         uint256 bps = oracleOut == 0 ? 0 : (diff * 10_000) / oracleOut;
    |         ^^^^^^^^^^^
 
 Warning (2072): Unused local variable.
-   --> test/KipuBankV3.t.sol:476:9:
+   --> test/KipuBankV3.t.sol:543:9:
     |
-476 |         bytes32 adminRole = bank.DEFAULT_ADMIN_ROLE();
+543 |         uint256 minOut = (expectedOut * (10_000 - SLIPPAGE_BPS)) / 10_000; // ~158.4e6
+    |         ^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/KipuBankV3.t.sol:813:9:
+    |
+813 |         bytes32 adminRole = bank.DEFAULT_ADMIN_ROLE();
     |         ^^^^^^^^^^^^^^^^^
 
 Warning (2018): Function state mutability can be restricted to view
-   --> test/KipuBankV3.t.sol:122:5:
+   --> test/KipuBankV3.t.sol:155:5:
     |
-122 |     function test_token_aceptado() public {
+155 |     function test_token_aceptado() public {
     |     ^ (Relevant source part starts here and spans across multiple lines).
 
 Analysing contracts...
 Running tests...
 
-Ran 4 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
-[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 3967728)
-[PASS] test_eth_con_oraculo_revert_no_configurado() (gas: 3729346)
-[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 3786112)
-[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 7806201)
-Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 27.30ms (35.39ms CPU time)
-
-Ran 23 tests for test/KipuBankV3.t.sol:KipuBankV3Test
-[PASS] test_bank_cap_precheck_y_credito() (gas: 3990917)
-[PASS] test_constructor_decimales_usdc_invalidos() (gas: 924346)
-[PASS] test_constructor_parametros_invalidos() (gas: 479132)
-[PASS] test_constructor_slippage_excesivo() (gas: 85797)
-[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 298402)
-[PASS] test_depositar_eth_swapea_a_usdc() (gas: 259823)
-[PASS] test_depositar_parametros_invalidos_erc20() (gas: 44827)
-[PASS] test_depositar_parametros_invalidos_eth() (gas: 35430)
-[PASS] test_depositar_recibe_eth_via_receive() (gas: 257181)
-[PASS] test_depositar_revertir_sin_par_directo() (gas: 33631)
-[PASS] test_depositar_usdc_directo() (gas: 192186)
-[PASS] test_pausar_bloquea_ops_y_roles() (gas: 206869)
-[PASS] test_retirar_respeta_withdraw_cap() (gas: 306936)
-[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 58693)
-[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 63921)
-[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 39851)
-[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 47905)
-[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 46272)
-[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 288555)
-[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 161264)
-[PASS] test_slippage_eth_dentro_margen_ok() (gas: 262580)
-[PASS] test_slippage_eth_fuera_margen_revert() (gas: 87123)
-[PASS] test_token_aceptado() (gas: 34521)
-Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 47.70ms (65.81ms CPU time)
+Ran 1 test for test/KipuTimelock.t.sol:KipuTimelockTest
+[PASS] test_timelock_puede_actualizar_configs() (gas: 235167)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.42s (4.21ms CPU time)
 
 Ran 1 test for test/CheckAmmVsOracle.t.sol:CheckAmmVsOracle
-[PASS] test_amm_vs_oraculo_info() (gas: 59116)
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.94s (3.94s CPU time)
+[PASS] test_amm_vs_oraculo_info() (gas: 61321)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.24s (4.23s CPU time)
 
-Ran 3 test suites in 3.95s (4.02s CPU time): 28 tests passed, 0 failed, 0 skipped (28 total tests)
+Ran 5 tests for test/KipuBankV3Oracle.t.sol:KipuBankV3OracleTest
+[PASS] test_eth_con_oraculo_ok_tolerancia_alta() (gas: 51755)
+[PASS] test_eth_con_oraculo_revert_por_desviacion() (gas: 3972697)
+[PASS] test_eth_oraculo_fallback_por_revert() (gas: 4146137)
+[PASS] test_eth_sin_oraculo_ok() (gas: 4108591)
+[PASS] test_gas_eth_sin_vs_con_oraculo() (gas: 51598)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 7.31s (4.29s CPU time)
 
-╭-------------------------------+------------------+------------------+----------------+----------------╮
-| File                          | % Lines          | % Statements     | % Branches     | % Funcs        |
-+=======================================================================================================+
-| script/DeployKipuBankV3.s.sol | 0.00% (0/36)     | 0.00% (0/46)     | 0.00% (0/4)    | 0.00% (0/1)    |
-|-------------------------------+------------------+------------------+----------------+----------------|
-| src/KipuBankV3.sol            | 88.34% (144/163) | 82.52% (203/246) | 45.65% (21/46) | 85.00% (17/20) |
-|-------------------------------+------------------+------------------+----------------+----------------|
-| test/mocks/MockERC20.sol      | 50.00% (4/8)     | 50.00% (2/4)     | 100.00% (0/0)  | 50.00% (2/4)   |
-|-------------------------------+------------------+------------------+----------------+----------------|
-| test/mocks/MockWETH9.sol      | 0.00% (0/9)      | 0.00% (0/8)      | 0.00% (0/4)    | 0.00% (0/2)    |
-|-------------------------------+------------------+------------------+----------------+----------------|
-| Total                         | 68.52% (148/216) | 67.43% (205/304) | 38.89% (21/54) | 70.37% (19/27) |
-╰-------------------------------+------------------+------------------+----------------+----------------╯
+Ran 34 tests for test/KipuBankV3.t.sol:KipuBankV3Test
+[PASS] test_admin_setters_config() (gas: 127698)
+[PASS] test_bank_cap_precheck_y_credito() (gas: 4133051)
+[PASS] test_constructor_decimales_usdc_invalidos() (gas: 924734)
+[PASS] test_constructor_parametros_invalidos() (gas: 479857)
+[PASS] test_constructor_slippage_excesivo() (gas: 86152)
+[PASS] test_depositar_erc20_cap_precheck_revert() (gas: 3949895)
+[PASS] test_depositar_erc20_con_par_swapea_a_usdc() (gas: 304509)
+[PASS] test_depositar_erc20_revert_cap_en_cierre() (gas: 3989530)
+[PASS] test_depositar_erc20_revert_cap_en_cierre_sin_mocks() (gas: 4060205)
+[PASS] test_depositar_eth_cap_precheck_revert() (gas: 3926668)
+[PASS] test_depositar_eth_revert_cap_en_cierre() (gas: 4031239)
+[PASS] test_depositar_eth_revert_pair_inexistente() (gas: 53035)
+[PASS] test_depositar_eth_swapea_a_usdc() (gas: 265582)
+[PASS] test_depositar_parametros_invalidos_erc20() (gas: 45149)
+[PASS] test_depositar_parametros_invalidos_eth() (gas: 35752)
+[PASS] test_depositar_recibe_eth_via_receive() (gas: 262986)
+[PASS] test_depositar_revertir_sin_par_directo() (gas: 33838)
+[PASS] test_depositar_usdc_directo() (gas: 191924)
+[PASS] test_pausar_bloquea_ops_y_roles() (gas: 206676)
+[PASS] test_receive_eth_monto_cero_revert() (gas: 21372)
+[PASS] test_retirar_respeta_withdraw_cap() (gas: 306535)
+[PASS] test_retirar_token_invalido_y_casos_borde() (gas: 59038)
+[PASS] test_roles_admin_otorga_pauser_y_nuevo_pauser_puede_pausar() (gas: 64082)
+[PASS] test_roles_no_admin_no_puede_otorgar_pauser() (gas: 40104)
+[PASS] test_roles_no_pauser_no_puede_pausar_y_unpause() (gas: 45385)
+[PASS] test_roles_pauser_sin_admin_no_puede_otorgar() (gas: 46548)
+[PASS] test_slippage_erc20_custom_revert_por_minout() (gas: 168254)
+[PASS] test_slippage_erc20_dentro_margen_ok() (gas: 294377)
+[PASS] test_slippage_erc20_fuera_margen_revert() (gas: 165314)
+[PASS] test_slippage_eth_custom_revert_por_minout() (gas: 3946941)
+[PASS] test_slippage_eth_dentro_margen_ok() (gas: 268291)
+[PASS] test_slippage_eth_fuera_margen_revert() (gas: 92617)
+[PASS] test_token_aceptado() (gas: 34682)
+[PASS] test_vistas_capacidad_y_contadores() (gas: 168218)
+Suite result: ok. 34 passed; 0 failed; 0 skipped; finished in 7.31s (9.84s CPU time)
+
+Ran 4 test suites in 7.31s (22.27s CPU time): 41 tests passed, 0 failed, 0 skipped (41 total tests)
+
+╭----------------------------------+------------------+------------------+----------------+----------------╮
+| File                             | % Lines          | % Statements     | % Branches     | % Funcs        |
++==========================================================================================================+
+| script/DeployKipuBankV3.s.sol    | 0.00% (0/36)     | 0.00% (0/46)     | 0.00% (0/4)    | 0.00% (0/1)    |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| script/DeployKipuTimelock.s.sol  | 0.00% (0/18)     | 0.00% (0/25)     | 100.00% (0/0)  | 0.00% (0/1)    |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| script/SetOracleDevBpsZero.s.sol | 0.00% (0/12)     | 0.00% (0/15)     | 100.00% (0/0)  | 0.00% (0/1)    |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| src/KipuBankV3.sol               | 79.15% (167/211) | 74.83% (223/298) | 60.71% (34/56) | 91.30% (21/23) |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| test/mocks/MockERC20.sol         | 50.00% (4/8)     | 50.00% (2/4)     | 100.00% (0/0)  | 50.00% (2/4)   |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| test/mocks/MockWETH9.sol         | 0.00% (0/9)      | 0.00% (0/8)      | 0.00% (0/4)    | 0.00% (0/2)    |
+|----------------------------------+------------------+------------------+----------------+----------------|
+| Total                            | 58.16% (171/294) | 56.82% (225/396) | 53.12% (34/64) | 71.88% (23/32) |
+╰----------------------------------+------------------+------------------+----------------+----------------╯
